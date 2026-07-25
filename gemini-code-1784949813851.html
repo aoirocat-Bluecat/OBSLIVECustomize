@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配信オーバーレイ ＆ コントロールパネル</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ＝＝＝ OBSオーバーレイ画面 ＝＝＝ */
+        body.obs-mode {
+            background-color: rgba(0, 0, 0, 0);
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            font-family: 'Noto Sans JP', sans-serif;
+            color: #ffffff;
+            position: relative;
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8), -1px -1px 4px rgba(0, 0, 0, 0.6);
+        }
+        .obs-mode .top-left-container { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .obs-mode .live-badge { display: inline-flex; align-items: center; background: linear-gradient(135deg, #ff0044 0%, #cc0000 100%); padding: 6px 16px; border-radius: 50px; font-size: 24px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 4px 10px rgba(255, 0, 68, 0.4); text-shadow: none; border: 2px solid #ff4d79; width: fit-content; }
+        .obs-mode .blinking-dot { width: 12px; height: 12px; background-color: #ffffff; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 8px #ffffff; animation: blink 1.5s infinite ease-in-out; }
+        @keyframes blink { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
+        
+        .obs-mode .time-display { font-family: 'Poppins', 'Noto Sans JP', sans-serif; font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
+        .obs-mode .date-display { font-size: 20px; font-weight: 700; color: #e0e0e0; margin-top: -5px; }
+        
+        .obs-mode .top-right-container { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 15px 25px; backdrop-filter: blur(4px); text-align: right; }
+        .obs-mode .info-title { font-size: 16px; color: #4dd0e1; margin-bottom: 5px; font-weight: 700; }
+        .obs-mode .info-content { font-size: 28px; font-weight: 900; }
+
+        /* 下部テロップ（完全シームレス無限ループ設定） */
+        .obs-mode .bottom-ticker { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.7); border-top: 2px solid #ff0044; height: 50px; display: flex; align-items: center; overflow: hidden; box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.5); }
+        .obs-mode .ticker-title { background: #ff0044; color: white; font-size: 20px; font-weight: 900; padding: 0 20px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; text-shadow: none; }
+        .obs-mode .ticker-text-wrapper { flex: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
+        .obs-mode .ticker-text { position: absolute; white-space: nowrap; font-size: 24px; animation: tickerScroll 25s linear infinite; will-change: transform; }
+        
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); } 
+        }
+
+        /* ＝＝＝ コントロールパネル画面 ＝＝＝ */
+        body.control-mode { background-color: #f0f2f5; font-family: 'Noto Sans JP', sans-serif; color: #333; padding: 20px; }
+        .control-mode .panel-container { max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .control-mode h1 { font-size: 24px; border-bottom: 3px solid #ff0044; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px; }
+        .control-mode .card { background: #fafafa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .control-mode .card h3 { margin-top: 0; color: #ff0044; font-size: 18px; }
+        .control-mode label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: #444; font-size: 14px; }
+        .control-mode input[type="text"], .control-mode textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .control-mode input[type="number"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .control-mode .size-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .control-mode input:focus, .control-mode textarea:focus { border-color: #ff0044; outline: none; }
+        .control-mode .url-box { display: flex; gap: 10px; margin-top: 10px; }
+        .control-mode .url-box input { flex: 1; background: #e9ecef; color: #555; }
+        .control-mode button { background: #ff0044; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .control-mode button:hover { background: #cc0033; }
+        .control-mode .status { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 15px; background: #ffebee; color: #cc0000; }
+        .control-mode .status.connected { background: #e8f5e9; color: #2e7d32; }
+    </style>
+</head>
+<body>
+
+    <!-- ＝＝＝ OBSオーバーレイ画面 ＝＝＝ -->
+    <div id="obs-view" style="display: none;">
+        <div class="top-left-container">
+            <div class="live-badge"><div class="blinking-dot"></div>配信中！</div>
+            <div class="time-display" id="clock">00:00:00</div>
+            <div class="date-display" id="date">YYYY/MM/DD (曜)</div>
+        </div>
+        <div class="top-right-container">
+            <div class="info-title" id="info-title">現在のプレイ状況</div>
+            <div class="info-content" id="info-content">まったり雑談 ＆ コメント読み</div>
+        </div>
+        <div class="bottom-ticker">
+            <div class="ticker-title">お知らせ</div>
+            <div class="ticker-text-wrapper">
+                <div class="ticker-text" id="ticker-text">読み込み中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ＝＝＝ コントロールパネル画面 ＝＝＝ -->
+    <div id="control-view" style="display: none;">
+        <div class="panel-container">
+            <h1>OBS オーバーレイ管理ツール</h1>
+            <div id="connection-status" class="status">サーバーに接続中...</div>
+
+            <div class="card">
+                <h3>1. OBSに設定するURL</h3>
+                <div class="url-box">
+                    <input type="text" id="obs-url-display" readonly>
+                    <button onclick="copyUrl()">コピーする</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. テキスト ＆ サイズ設定</h3>
+                
+                <label>右上のパネル：タイトル文字</label>
+                <input type="text" id="input-title" value="現在のプレイ状況">
+                <div class="size-row">
+                    <div>
+                        <label>タイトル文字サイズ (px)</label>
+                        <input type="number" id="input-title-size" value="16">
+                    </div>
+                </div>
+
+                <label style="margin-top:20px;">右上のパネル：内容文字</label>
+                <input type="text" id="input-content" value="まったり雑談 ＆ コメント読み">
+                <div class="size-row">
+                    <div>
+                        <label>内容文字サイズ (px)</label>
+                        <input type="number" id="input-content-size" value="28">
+                    </div>
+                </div>
+
+                <label style="margin-top:20px;">時計の文字サイズ (px)</label>
+                <input type="number" id="input-clock-size" value="64">
+
+                <label style="margin-top:20px;">日付の文字サイズ (px)</label>
+                <input type="number" id="input-date-size" value="20">
+
+                <label style="margin-top:20px;">下のスクロールお知らせ</label>
+                <textarea id="input-ticker" rows="2">ご視聴ありがとうございます！チャンネル登録・高評価よろしくお願いします！ ／ 今日の目標：チャンネル登録者数〇〇人</textarea>
+                <div class="size-row">
+                    <div>
+                        <label>お知らせ文字サイズ (px)</label>
+                        <input type="number" id="input-ticker-size" value="24">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const isObs = urlParams.get('obs') === '1';
+        
+        let roomId = urlParams.get('room');
+        if (!roomId) {
+            roomId = localStorage.getItem('obs_room_id');
+            if (!roomId) {
+                roomId = 'room_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('obs_room_id', roomId);
+            }
+        }
+
+        if (isObs) {
+            document.body.classList.add('obs-mode');
+            document.getElementById('obs-view').style.display = 'block';
+            startClock();
+        } else {
+            document.body.classList.add('control-mode');
+            document.getElementById('control-view').style.display = 'block';
+            
+            const obsUrl = window.location.href.split('?')[0] + '?obs=1&room=' + roomId;
+            document.getElementById('obs-url-display').value = obsUrl;
+            loadLocalInputs();
+        }
+
+        // MQTT通信
+        const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
+        const topicData = 'obs_sync_app_data_' + roomId;
+
+        client.on('connect', () => {
+            if (isObs) {
+                client.subscribe(topicData);
+            } else {
+                document.getElementById('connection-status').textContent = '✅ サーバー接続完了';
+                document.getElementById('connection-status').classList.add('connected');
+                publishData();
+            }
+        });
+
+        client.on('message', (topic, message) => {
+            if (isObs && topic === topicData) {
+                try {
+                    const data = JSON.parse(message.toString());
+                    
+                    // テキストの反映
+                    if(data.infoTitle) document.getElementById('info-title').textContent = data.infoTitle;
+                    if(data.infoContent) document.getElementById('info-content').textContent = data.infoContent;
+                    if(data.tickerText) {
+                        const loopText = data.tickerText + "        " + data.tickerText + "        ";
+                        document.getElementById('ticker-text').textContent = loopText;
+                    }
+
+                    // サイズの反映
+                    if(data.titleSize) document.getElementById('info-title').style.fontSize = data.titleSize + 'px';
+                    if(data.contentSize) document.getElementById('info-content').style.fontSize = data.contentSize + 'px';
+                    if(data.clockSize) document.getElementById('clock').style.fontSize = data.clockSize + 'px';
+                    if(data.dateSize) document.getElementById('date').style.fontSize = data.dateSize + 'px';
+                    if(data.tickerSize) document.getElementById('ticker-text').style.fontSize = data.tickerSize + 'px';
+                } catch(e) {}
+            }
+        });
+
+        function publishData() {
+            if (isObs) return;
+            const data = {
+                infoTitle: document.getElementById('input-title').value,
+                infoContent: document.getElementById('input-content').value,
+                tickerText: document.getElementById('input-ticker').value,
+                titleSize: document.getElementById('input-title-size').value,
+                contentSize: document.getElementById('input-content-size').value,
+                clockSize: document.getElementById('input-clock-size').value,
+                dateSize: document.getElementById('input-date-size').value,
+                tickerSize: document.getElementById('input-ticker-size').value
+            };
+            localStorage.setItem('obs_panel_data', JSON.stringify(data));
+            client.publish(topicData, JSON.stringify(data), { retain: true });
+        }
+
+        if (!isObs) {
+            const inputs = ['input-title', 'input-content', 'input-ticker', 'input-title-size', 'input-content-size', 'input-clock-size', 'input-date-size', 'input-ticker-size'];
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', publishData);
+            });
+        }
+
+        function loadLocalInputs() {
+            const saved = localStorage.getItem('obs_panel_data');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if(data.infoTitle) document.getElementById('input-title').value = data.infoTitle;
+                    if(data.infoContent) document.getElementById('input-content').value = data.infoContent;
+                    if(data.tickerText) document.getElementById('input-ticker').value = data.tickerText;
+                    if(data.titleSize) document.getElementById('input-title-size').value = data.titleSize;
+                    if(data.contentSize) document.getElementById('input-content-size').value = data.contentSize;
+                    if(data.clockSize) document.getElementById('input-clock-size').value = data.clockSize;
+                    if(data.dateSize) document.getElementById('input-date-size').value = data.dateSize;
+                    if(data.tickerSize) document.getElementById('input-ticker-size').value = data.tickerSize;
+                } catch(e) {}
+            }
+        }
+
+        function copyUrl() {
+            const urlInput = document.getElementById('obs-url-display');
+            urlInput.select();
+            navigator.clipboard.writeText(urlInput.value).then(() => {
+                alert('URLをコピーしました！');
+            });
+        }
+
+        function startClock() {
+            function updateClock() {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+                const weekDay = weekDays[now.getDay()];
+
+                document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+                document.getElementById('date').textContent = `${year}/${month}/${day} (${weekDay})`;
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+        }
+    </script>
+</body>
+</html>
