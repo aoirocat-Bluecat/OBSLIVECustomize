@@ -75,7 +75,7 @@
             <div class="info-title" id="info-title">現在のプレイ状況</div>
             <div class="info-content" id="info-content">まったり雑談 ＆ コメント読み</div>
         </div>
-        <div class="bottom-ticker">
+        <div class="bottom-ticker" id="bottom-ticker">
             <div class="ticker-title">お知らせ</div>
             <div class="ticker-text-wrapper">
                 <div class="ticker-text" id="ticker-text">読み込み中...</div>
@@ -131,7 +131,13 @@
                 <label style="margin-top:20px;">日付の文字サイズ (px)</label>
                 <input type="number" id="input-date-size" value="20">
 
-                <label style="margin-top:20px;">下のスクロールお知らせ</label>
+                <label style="margin-top:20px;">下のスクロールお知らせ：表示状態</label>
+                <select id="input-ticker-visible">
+                    <option value="flex">表示する</option>
+                    <option value="none">表示しない</option>
+                </select>
+
+                <label style="margin-top:15px;">下のスクロールお知らせ：内容</label>
                 <textarea id="input-ticker" rows="2">ご視聴ありがとうございます！チャンネル登録・高評価よろしくお願いします！ ／ 今日の目標：チャンネル登録者数〇〇人</textarea>
                 <div class="size-row">
                     <div>
@@ -196,6 +202,11 @@
                         document.getElementById('ticker-text').textContent = loopText;
                     }
 
+                    // 表示・非表示の反映
+                    if(data.tickerVisible) {
+                        document.getElementById('bottom-ticker').style.display = data.tickerVisible;
+                    }
+
                     // 配置の反映
                     if(data.textAlign) document.getElementById('top-right-container').style.textAlign = data.textAlign;
 
@@ -215,6 +226,7 @@
                 infoTitle: document.getElementById('input-title').value,
                 infoContent: document.getElementById('input-content').value,
                 tickerText: document.getElementById('input-ticker').value,
+                tickerVisible: document.getElementById('input-ticker-visible').value,
                 textAlign: document.getElementById('input-align').value,
                 titleSize: document.getElementById('input-title-size').value,
                 contentSize: document.getElementById('input-content-size').value,
@@ -227,7 +239,7 @@
         }
 
         if (!isObs) {
-            const inputs = ['input-title', 'input-content', 'input-ticker', 'input-align', 'input-title-size', 'input-content-size', 'input-clock-size', 'input-date-size', 'input-ticker-size'];
+            const inputs = ['input-title', 'input-content', 'input-ticker', 'input-ticker-visible', 'input-align', 'input-title-size', 'input-content-size', 'input-clock-size', 'input-date-size', 'input-ticker-size'];
             inputs.forEach(id => {
                 const element = document.getElementById(id);
                 element.addEventListener('input', publishData);
@@ -243,6 +255,7 @@
                     if(data.infoTitle) document.getElementById('input-title').value = data.infoTitle;
                     if(data.infoContent) document.getElementById('input-content').value = data.infoContent;
                     if(data.tickerText) document.getElementById('input-ticker').value = data.tickerText;
+                    if(data.tickerVisible) document.getElementById('input-ticker-visible').value = data.tickerVisible;
                     if(data.textAlign) document.getElementById('input-align').value = data.textAlign;
                     if(data.titleSize) document.getElementById('input-title-size').value = data.titleSize;
                     if(data.contentSize) document.getElementById('input-content-size').value = data.contentSize;
