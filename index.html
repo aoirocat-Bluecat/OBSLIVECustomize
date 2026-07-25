@@ -50,10 +50,10 @@
         .control-mode .card { background: #fafafa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
         .control-mode .card h3 { margin-top: 0; color: #ff0044; font-size: 18px; }
         .control-mode label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: #444; font-size: 14px; }
-        .control-mode input[type="text"], .control-mode textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .control-mode input[type="text"], .control-mode textarea, .control-mode select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
         .control-mode input[type="number"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
         .control-mode .size-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        .control-mode input:focus, .control-mode textarea:focus { border-color: #ff0044; outline: none; }
+        .control-mode input:focus, .control-mode textarea:focus, .control-mode select:focus { border-color: #ff0044; outline: none; }
         .control-mode .url-box { display: flex; gap: 10px; margin-top: 10px; }
         .control-mode .url-box input { flex: 1; background: #e9ecef; color: #555; }
         .control-mode button { background: #ff0044; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
@@ -71,7 +71,7 @@
             <div class="time-display" id="clock">00:00:00</div>
             <div class="date-display" id="date">YYYY/MM/DD (曜)</div>
         </div>
-        <div class="top-right-container">
+        <div class="top-right-container" id="top-right-container">
             <div class="info-title" id="info-title">現在のプレイ状況</div>
             <div class="info-content" id="info-content">まったり雑談 ＆ コメント読み</div>
         </div>
@@ -98,9 +98,16 @@
             </div>
 
             <div class="card">
-                <h3>2. テキスト ＆ サイズ設定</h3>
+                <h3>2. テキスト ＆ 配置・サイズ設定</h3>
                 
-                <label>右上のパネル：タイトル文字</label>
+                <label>右上のパネル：文字の配置</label>
+                <select id="input-align">
+                    <option value="right">右揃え</option>
+                    <option value="center">中央揃え</option>
+                    <option value="left">左揃え</option>
+                </select>
+
+                <label style="margin-top:20px;">右上のパネル：タイトル文字</label>
                 <input type="text" id="input-title" value="現在のプレイ状況">
                 <div class="size-row">
                     <div>
@@ -189,6 +196,9 @@
                         document.getElementById('ticker-text').textContent = loopText;
                     }
 
+                    // 配置の反映
+                    if(data.textAlign) document.getElementById('top-right-container').style.textAlign = data.textAlign;
+
                     // サイズの反映
                     if(data.titleSize) document.getElementById('info-title').style.fontSize = data.titleSize + 'px';
                     if(data.contentSize) document.getElementById('info-content').style.fontSize = data.contentSize + 'px';
@@ -205,6 +215,7 @@
                 infoTitle: document.getElementById('input-title').value,
                 infoContent: document.getElementById('input-content').value,
                 tickerText: document.getElementById('input-ticker').value,
+                textAlign: document.getElementById('input-align').value,
                 titleSize: document.getElementById('input-title-size').value,
                 contentSize: document.getElementById('input-content-size').value,
                 clockSize: document.getElementById('input-clock-size').value,
@@ -216,9 +227,11 @@
         }
 
         if (!isObs) {
-            const inputs = ['input-title', 'input-content', 'input-ticker', 'input-title-size', 'input-content-size', 'input-clock-size', 'input-date-size', 'input-ticker-size'];
+            const inputs = ['input-title', 'input-content', 'input-ticker', 'input-align', 'input-title-size', 'input-content-size', 'input-clock-size', 'input-date-size', 'input-ticker-size'];
             inputs.forEach(id => {
-                document.getElementById(id).addEventListener('input', publishData);
+                const element = document.getElementById(id);
+                element.addEventListener('input', publishData);
+                element.addEventListener('change', publishData);
             });
         }
 
@@ -230,6 +243,7 @@
                     if(data.infoTitle) document.getElementById('input-title').value = data.infoTitle;
                     if(data.infoContent) document.getElementById('input-content').value = data.infoContent;
                     if(data.tickerText) document.getElementById('input-ticker').value = data.tickerText;
+                    if(data.textAlign) document.getElementById('input-align').value = data.textAlign;
                     if(data.titleSize) document.getElementById('input-title-size').value = data.titleSize;
                     if(data.contentSize) document.getElementById('input-content-size').value = data.contentSize;
                     if(data.clockSize) document.getElementById('input-clock-size').value = data.clockSize;
