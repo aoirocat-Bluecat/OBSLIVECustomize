@@ -9,61 +9,98 @@
     <style>
         body { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* ＝＝＝ OBSオーバーレイ画面 ＝＝＝ */
-        body.obs-mode {
-            background-color: rgba(0, 0, 0, 0);
+        /* ＝＝＝ OBSオーバーレイ ＆ プレビュー共通 ＝＝＝ */
+        .obs-container {
             width: 1920px;
             height: 1080px;
-            overflow: hidden;
             font-family: 'Noto Sans JP', sans-serif;
             color: #ffffff;
             position: relative;
             text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8), -1px -1px 4px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
         }
-        .obs-mode .top-left-container { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .obs-mode .live-badge { display: inline-flex; align-items: center; background: linear-gradient(135deg, #ff0044 0%, #cc0000 100%); padding: 6px 16px; border-radius: 50px; font-size: 24px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 4px 10px rgba(255, 0, 68, 0.4); text-shadow: none; border: 2px solid #ff4d79; width: fit-content; }
-        .obs-mode .blinking-dot { width: 12px; height: 12px; background-color: #ffffff; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 8px #ffffff; animation: blink 1.5s infinite ease-in-out; }
+
+        /* 個別の絶対配置要素 */
+        .obs-element { position: absolute; }
+
+        .live-badge { display: inline-flex; align-items: center; background: linear-gradient(135deg, #ff0044 0%, #cc0000 100%); padding: 6px 16px; border-radius: 50px; font-size: 24px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 4px 10px rgba(255, 0, 68, 0.4); text-shadow: none; border: 2px solid #ff4d79; width: fit-content; }
+        .blinking-dot { width: 12px; height: 12px; background-color: #ffffff; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 8px #ffffff; animation: blink 1.5s infinite ease-in-out; }
         @keyframes blink { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
         
-        .obs-mode .time-display { font-family: 'Poppins', 'Noto Sans JP', sans-serif; font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
-        .obs-mode .date-display { font-size: 20px; font-weight: 700; color: #e0e0e0; margin-top: -5px; }
+        .time-display { font-family: 'Poppins', 'Noto Sans JP', sans-serif; font-size: 64px; font-weight: 700; line-height: 1; letter-spacing: 2px; }
+        .date-display { font-size: 20px; font-weight: 700; color: #e0e0e0; }
         
-        .obs-mode .top-right-container { position: absolute; top: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 15px 25px; backdrop-filter: blur(4px); text-align: right; }
-        .obs-mode .info-title { font-size: 16px; color: #4dd0e1; margin-bottom: 5px; font-weight: 700; }
-        .obs-mode .info-content { font-size: 28px; font-weight: 900; }
+        .top-right-container { background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 12px; padding: 15px 25px; backdrop-filter: blur(4px); text-align: right; min-width: 300px; }
+        .info-title { font-size: 16px; color: #4dd0e1; margin-bottom: 5px; font-weight: 700; }
+        .info-content { font-size: 28px; font-weight: 900; white-space: nowrap; }
 
-        /* 下部テロップ（完全シームレス無限ループ設定） */
-        .obs-mode .bottom-ticker { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.7); border-top: 2px solid #ff0044; height: 50px; display: flex; align-items: center; overflow: hidden; box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.5); }
-        .obs-mode .ticker-title { background: #ff0044; color: white; font-size: 20px; font-weight: 900; padding: 0 20px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; text-shadow: none; }
-        .obs-mode .ticker-text-wrapper { flex: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
-        .obs-mode .ticker-text { position: absolute; white-space: nowrap; font-size: 24px; animation: tickerScroll 25s linear infinite; will-change: transform; }
+        .bottom-ticker { background: rgba(0, 0, 0, 0.7); border-top: 2px solid #ff0044; height: 50px; display: flex; align-items: center; box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.5); width: 1920px; }
+        .ticker-title { background: #ff0044; color: white; font-size: 20px; font-weight: 900; padding: 0 20px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; text-shadow: none; }
+        .ticker-text-wrapper { flex: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
+        .ticker-text { position: absolute; white-space: nowrap; font-size: 24px; animation: tickerScroll 25s linear infinite; will-change: transform; }
         
         @keyframes tickerScroll {
             0% { transform: translateX(0); }
             100% { transform: translateX(-50%); } 
         }
 
-        /* ＝＝＝ コントロールパネル画面 ＝＝＝ */
+        /* ＝＝＝ OBSオーバーレイ本番用 ＝＝＝ */
+        body.obs-mode { background-color: rgba(0, 0, 0, 0); overflow: hidden; }
+
+        /* ＝＝＝ コントロールパネル用 ＝＝＝ */
         body.control-mode { background-color: #f0f2f5; font-family: 'Noto Sans JP', sans-serif; color: #333; padding: 20px; }
-        .control-mode .panel-container { max-width: 700px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .control-mode .panel-container { max-width: 900px; margin: 0 auto 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .control-mode h1 { font-size: 24px; border-bottom: 3px solid #ff0044; padding-bottom: 10px; margin-top: 0; margin-bottom: 20px; }
         .control-mode .card { background: #fafafa; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .control-mode .card h3 { margin-top: 0; color: #ff0044; font-size: 18px; }
+        .control-mode .card h3 { margin-top: 0; color: #ff0044; font-size: 18px; margin-bottom: 10px; }
         .control-mode label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: #444; font-size: 14px; }
-        .control-mode input[type="text"], .control-mode textarea, .control-mode select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .control-mode input[type="text"], .control-mode textarea, .control-mode select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
         .control-mode input[type="number"] { width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
         .control-mode .size-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        .control-mode input:focus, .control-mode textarea:focus, .control-mode select:focus { border-color: #ff0044; outline: none; }
         .control-mode .url-box { display: flex; gap: 10px; margin-top: 10px; }
         .control-mode .url-box input { flex: 1; background: #e9ecef; color: #555; }
-        .control-mode button { background: #ff0044; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .control-mode button:hover { background: #cc0033; }
+        .control-mode button.main-btn { background: #ff0044; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .control-mode button.main-btn:hover { background: #cc0033; }
         .control-mode .status { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 15px; background: #ffebee; color: #cc0000; }
         .control-mode .status.connected { background: #e8f5e9; color: #2e7d32; }
 
-        /* トグルスイッチのスタイル */
-        .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 12px 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-top: 8px; }
+        /* プレビュー領域のスタイル */
+        .preview-wrapper { 
+            width: 100%; 
+            background: #222; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            border: 2px solid #ccc;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .control-mode #obs-view {
+            transform-origin: top left;
+            background-image: 
+                linear-gradient(45deg, #333 25%, transparent 25%), 
+                linear-gradient(-45deg, #333 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #333 75%), 
+                linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        /* ドラッグ関連 */
+        .control-mode .draggable { cursor: grab; touch-action: none; }
+        .control-mode .draggable:active { cursor: grabbing; }
+        .control-mode .draggable:hover { outline: 3px dashed rgba(255, 0, 68, 0.7); outline-offset: 2px; }
+
+        /* スナップガイドライン */
+        .guide-line-v, .guide-line-h { position: absolute; background-color: #ff0044; z-index: 9999; display: none; pointer-events: none; box-shadow: 0 0 5px #ff0044; }
+        .guide-line-v { width: 2px; height: 1080px; top: 0; }
+        .guide-line-h { height: 2px; width: 1920px; left: 0; }
+
+        /* トグル＆リセットスイッチ */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 10px 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-top: 8px; }
         .toggle-row span { font-weight: bold; color: #444; font-size: 14px; }
+        .toggle-right-group { display: flex; align-items: center; gap: 15px; }
+        .reset-btn { background: #e0e0e0; color: #333; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .reset-btn:hover { background: #ccc; }
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 26px; }
@@ -74,26 +111,39 @@
 </head>
 <body>
 
-    <!-- ＝＝＝ OBSオーバーレイ画面 ＝＝＝ -->
-    <div id="obs-view" style="display: none;">
-        <div class="top-left-container">
-            <div class="live-badge" id="live-badge-box"><div class="blinking-dot"></div>配信中！</div>
-            <div class="time-display" id="clock">00:00:00</div>
-            <div class="date-display" id="date">YYYY/MM/DD (曜)</div>
+    <!-- ＝＝＝ OBSオーバーレイ（プレビュー兼本番） ＝＝＝ -->
+    <div id="obs-view" class="obs-container" style="display: none;">
+        <!-- スナップ用のガイドライン（赤い線） -->
+        <div id="guide-v" class="guide-line-v"></div>
+        <div id="guide-h" class="guide-line-h"></div>
+        
+        <div class="obs-element draggable live-badge" id="live-badge-box" style="left: 20px; top: 20px;">
+            <div class="blinking-dot"></div>配信中！
         </div>
-        <div class="top-right-container" id="top-right-container">
+        
+        <div class="obs-element draggable time-display" id="clock" style="left: 20px; top: 80px;">
+            00:00:00
+        </div>
+        
+        <div class="obs-element draggable date-display" id="date" style="left: 20px; top: 150px;">
+            YYYY/MM/DD (曜)
+        </div>
+        
+        <div class="obs-element draggable top-right-container" id="top-right-container" style="left: 1450px; top: 20px;">
             <div class="info-title" id="info-title">現在のプレイ状況</div>
             <div class="info-content" id="info-content">まったり雑談 ＆ コメント読み</div>
         </div>
-        <div class="bottom-ticker" id="bottom-ticker">
+        
+        <div class="obs-element draggable bottom-ticker" id="bottom-ticker" style="left: 0px; top: 1030px;">
             <div class="ticker-title">お知らせ</div>
             <div class="ticker-text-wrapper">
                 <div class="ticker-text" id="ticker-text">読み込み中...</div>
             </div>
         </div>
+
     </div>
 
-    <!-- ＝＝＝ コントロールパネル画面 ＝＝＝ -->
+    <!-- ＝＝＝ コントロールパネル ＝＝＝ -->
     <div id="control-view" style="display: none;">
         <div class="panel-container">
             <h1>OBS オーバーレイ管理ツール</h1>
@@ -103,65 +153,71 @@
                 <h3>1. OBSに設定するURL</h3>
                 <div class="url-box">
                     <input type="text" id="obs-url-display" readonly>
-                    <button onclick="copyUrl()">コピーする</button>
+                    <button class="main-btn" onclick="copyUrl()">コピーする</button>
                 </div>
             </div>
 
             <div class="card">
-                <h3>2. 各要素の表示・非表示 (トグルスイッチ)</h3>
+                <h3>2. プレビュー ＆ ドラッグ配置</h3>
+                <p style="font-size: 13px; color: #666; margin-top: -5px; margin-bottom: 15px;">
+                    ※各要素をドラッグで移動できます。<b>他の要素や画面端に近づくとピタッと揃って赤い線が表示されます。</b>
+                </p>
+                <div id="preview-wrapper" class="preview-wrapper">
+                    <!-- JSで obs-view がここに移動します -->
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>3. 表示の切り替え ＆ 位置リセット</h3>
                 
                 <div class="toggle-row">
                     <span>「配信中」バッジ</span>
-                    <label class="switch">
-                        <input type="checkbox" id="input-live-badge-visible" checked>
-                        <span class="slider"></span>
-                    </label>
+                    <div class="toggle-right-group">
+                        <button class="reset-btn" onclick="resetPos('liveBadgeBox', 'live-badge-box')">位置リセット</button>
+                        <label class="switch"><input type="checkbox" id="input-live-badge-visible" checked><span class="slider"></span></label>
+                    </div>
                 </div>
-
                 <div class="toggle-row">
                     <span>時計</span>
-                    <label class="switch">
-                        <input type="checkbox" id="input-clock-visible" checked>
-                        <span class="slider"></span>
-                    </label>
+                    <div class="toggle-right-group">
+                        <button class="reset-btn" onclick="resetPos('clockBox', 'clock')">位置リセット</button>
+                        <label class="switch"><input type="checkbox" id="input-clock-visible" checked><span class="slider"></span></label>
+                    </div>
                 </div>
-
                 <div class="toggle-row">
                     <span>日付</span>
-                    <label class="switch">
-                        <input type="checkbox" id="input-date-visible" checked>
-                        <span class="slider"></span>
-                    </label>
+                    <div class="toggle-right-group">
+                        <button class="reset-btn" onclick="resetPos('dateBox', 'date')">位置リセット</button>
+                        <label class="switch"><input type="checkbox" id="input-date-visible" checked><span class="slider"></span></label>
+                    </div>
                 </div>
-
                 <div class="toggle-row">
                     <span>右上のパネル</span>
-                    <label class="switch">
-                        <input type="checkbox" id="input-top-right-visible" checked>
-                        <span class="slider"></span>
-                    </label>
+                    <div class="toggle-right-group">
+                        <button class="reset-btn" onclick="resetPos('topRightContainer', 'top-right-container')">位置リセット</button>
+                        <label class="switch"><input type="checkbox" id="input-top-right-visible" checked><span class="slider"></span></label>
+                    </div>
                 </div>
-
                 <div class="toggle-row">
                     <span>下のスクロールお知らせ</span>
-                    <label class="switch">
-                        <input type="checkbox" id="input-ticker-visible" checked>
-                        <span class="slider"></span>
-                    </label>
+                    <div class="toggle-right-group">
+                        <button class="reset-btn" onclick="resetPos('bottomTicker', 'bottom-ticker')">位置リセット</button>
+                        <label class="switch"><input type="checkbox" id="input-ticker-visible" checked><span class="slider"></span></label>
+                    </div>
                 </div>
             </div>
 
             <div class="card">
-                <h3>3. テキスト ＆ 配置・サイズ設定</h3>
+                <h3>4. テキスト ＆ サイズ設定</h3>
                 
-                <label>右上のパネル：文字の配置</label>
+                <label>パネルの文字配置</label>
                 <select id="input-align">
                     <option value="right">右揃え</option>
                     <option value="center">中央揃え</option>
                     <option value="left">左揃え</option>
                 </select>
 
-                <label style="margin-top:20px;">右上のパネル：タイトル文字</label>
+                <label style="margin-top:20px;">パネル：タイトル文字</label>
                 <input type="text" id="input-title" value="現在のプレイ状況">
                 <div class="size-row">
                     <div>
@@ -170,7 +226,7 @@
                     </div>
                 </div>
 
-                <label style="margin-top:20px;">右上のパネル：内容文字</label>
+                <label style="margin-top:20px;">パネル：内容文字</label>
                 <input type="text" id="input-content" value="まったり雑談 ＆ コメント読み">
                 <div class="size-row">
                     <div>
@@ -185,7 +241,7 @@
                 <label style="margin-top:20px;">日付の文字サイズ (px)</label>
                 <input type="number" id="input-date-size" value="20">
 
-                <label style="margin-top:20px;">下のスクロールお知らせ：内容</label>
+                <label style="margin-top:20px;">下のスクロールお知らせ</label>
                 <textarea id="input-ticker" rows="2">ご視聴ありがとうございます！チャンネル登録・高評価よろしくお願いします！ ／ 今日の目標：チャンネル登録者数〇〇人</textarea>
                 <div class="size-row">
                     <div>
@@ -203,24 +259,49 @@
         
         let roomId = urlParams.get('room');
         if (!roomId) {
-            roomId = localStorage.getItem('obs_room_id');
-            if (!roomId) {
-                roomId = 'room_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('obs_room_id', roomId);
-            }
+            roomId = localStorage.getItem('obs_room_id') || ('room_' + Math.random().toString(36).substr(2, 9));
+            localStorage.setItem('obs_room_id', roomId);
         }
 
+        const obsView = document.getElementById('obs-view');
+        
+        // 要素の初期位置定義
+        const DEFAULT_POSITIONS = {
+            liveBadgeBox: { x: 20, y: 20 },
+            clockBox: { x: 20, y: 80 },
+            dateBox: { x: 20, y: 150 },
+            topRightContainer: { x: 1450, y: 20 },
+            bottomTicker: { x: 0, y: 1030 }
+        };
+        let positions = JSON.parse(JSON.stringify(DEFAULT_POSITIONS));
+
+        // 初期化処理
         if (isObs) {
             document.body.classList.add('obs-mode');
-            document.getElementById('obs-view').style.display = 'block';
-            startClock();
+            obsView.style.display = 'block';
         } else {
             document.body.classList.add('control-mode');
             document.getElementById('control-view').style.display = 'block';
             
+            // プレビュー領域へobs-viewを移動
+            obsView.style.display = 'block';
+            document.getElementById('preview-wrapper').appendChild(obsView);
+            
             const obsUrl = window.location.href.split('?')[0] + '?obs=1&room=' + roomId;
             document.getElementById('obs-url-display').value = obsUrl;
-            loadLocalInputs();
+            
+            window.addEventListener('resize', resizePreview);
+            setTimeout(resizePreview, 100);
+        }
+
+        startClock();
+
+        function resizePreview() {
+            if (isObs) return;
+            const wrapper = document.getElementById('preview-wrapper');
+            const scale = wrapper.clientWidth / 1920;
+            obsView.style.transform = `scale(${scale})`;
+            wrapper.style.height = (1080 * scale) + 'px';
         }
 
         // MQTT通信
@@ -233,46 +314,18 @@
             } else {
                 document.getElementById('connection-status').textContent = '✅ サーバー接続完了';
                 document.getElementById('connection-status').classList.add('connected');
-                publishData();
+                loadLocalInputs();
             }
         });
 
         client.on('message', (topic, message) => {
             if (isObs && topic === topicData) {
-                try {
-                    const data = JSON.parse(message.toString());
-                    
-                    // テキストの反映
-                    if(data.infoTitle) document.getElementById('info-title').textContent = data.infoTitle;
-                    if(data.infoContent) document.getElementById('info-content').textContent = data.infoContent;
-                    if(data.tickerText) {
-                        const loopText = data.tickerText + "        " + data.tickerText + "        ";
-                        document.getElementById('ticker-text').textContent = loopText;
-                    }
-
-                    // 表示・非表示の反映（トグル）
-                    if(data.liveBadgeVisible !== undefined) document.getElementById('live-badge-box').style.display = data.liveBadgeVisible ? 'inline-flex' : 'none';
-                    if(data.clockVisible !== undefined) document.getElementById('clock').style.display = data.clockVisible ? 'block' : 'none';
-                    if(data.dateVisible !== undefined) document.getElementById('date').style.display = data.dateVisible ? 'block' : 'none';
-                    if(data.topRightVisible !== undefined) document.getElementById('top-right-container').style.display = data.topRightVisible ? 'block' : 'none';
-                    if(data.tickerVisible !== undefined) document.getElementById('bottom-ticker').style.display = data.tickerVisible ? 'flex' : 'none';
-
-                    // 配置の反映
-                    if(data.textAlign) document.getElementById('top-right-container').style.textAlign = data.textAlign;
-
-                    // サイズの反映
-                    if(data.titleSize) document.getElementById('info-title').style.fontSize = data.titleSize + 'px';
-                    if(data.contentSize) document.getElementById('info-content').style.fontSize = data.contentSize + 'px';
-                    if(data.clockSize) document.getElementById('clock').style.fontSize = data.clockSize + 'px';
-                    if(data.dateSize) document.getElementById('date').style.fontSize = data.dateSize + 'px';
-                    if(data.tickerSize) document.getElementById('ticker-text').style.fontSize = data.tickerSize + 'px';
-                } catch(e) {}
+                try { updateDOM(JSON.parse(message.toString())); } catch(e) {}
             }
         });
 
-        function publishData() {
-            if (isObs) return;
-            const data = {
+        function gatherData() {
+            return {
                 infoTitle: document.getElementById('input-title').value,
                 infoContent: document.getElementById('input-content').value,
                 tickerText: document.getElementById('input-ticker').value,
@@ -288,10 +341,56 @@
                 contentSize: document.getElementById('input-content-size').value,
                 clockSize: document.getElementById('input-clock-size').value,
                 dateSize: document.getElementById('input-date-size').value,
-                tickerSize: document.getElementById('input-ticker-size').value
+                tickerSize: document.getElementById('input-ticker-size').value,
+                
+                positions: positions
             };
+        }
+
+        function publishData() {
+            if (isObs) return;
+            const data = gatherData();
             localStorage.setItem('obs_panel_data', JSON.stringify(data));
             client.publish(topicData, JSON.stringify(data), { retain: true });
+        }
+
+        function updateDOM(data) {
+            if (!data) return;
+
+            if(data.infoTitle !== undefined) document.getElementById('info-title').textContent = data.infoTitle;
+            if(data.infoContent !== undefined) document.getElementById('info-content').textContent = data.infoContent;
+            if(data.tickerText !== undefined) {
+                document.getElementById('ticker-text').textContent = data.tickerText + "        " + data.tickerText + "        ";
+            }
+
+            if(data.liveBadgeVisible !== undefined) document.getElementById('live-badge-box').style.display = data.liveBadgeVisible ? 'inline-flex' : 'none';
+            if(data.clockVisible !== undefined) document.getElementById('clock').style.display = data.clockVisible ? 'block' : 'none';
+            if(data.dateVisible !== undefined) document.getElementById('date').style.display = data.dateVisible ? 'block' : 'none';
+            if(data.topRightVisible !== undefined) document.getElementById('top-right-container').style.display = data.topRightVisible ? 'block' : 'none';
+            if(data.tickerVisible !== undefined) document.getElementById('bottom-ticker').style.display = data.tickerVisible ? 'flex' : 'none';
+
+            if(data.textAlign !== undefined) document.getElementById('top-right-container').style.textAlign = data.textAlign;
+            if(data.titleSize !== undefined) document.getElementById('info-title').style.fontSize = data.titleSize + 'px';
+            if(data.contentSize !== undefined) document.getElementById('info-content').style.fontSize = data.contentSize + 'px';
+            if(data.clockSize !== undefined) document.getElementById('clock').style.fontSize = data.clockSize + 'px';
+            if(data.dateSize !== undefined) document.getElementById('date').style.fontSize = data.dateSize + 'px';
+            if(data.tickerSize !== undefined) document.getElementById('ticker-text').style.fontSize = data.tickerSize + 'px';
+
+            if(data.positions) {
+                const els = {
+                    liveBadgeBox: document.getElementById('live-badge-box'),
+                    clockBox: document.getElementById('clock'),
+                    dateBox: document.getElementById('date'),
+                    topRightContainer: document.getElementById('top-right-container'),
+                    bottomTicker: document.getElementById('bottom-ticker')
+                };
+                for (const [key, el] of Object.entries(els)) {
+                    if(data.positions[key] && el) {
+                        el.style.left = data.positions[key].x + 'px';
+                        el.style.top = data.positions[key].y + 'px';
+                    }
+                }
+            }
         }
 
         if (!isObs) {
@@ -302,8 +401,8 @@
             ];
             inputs.forEach(id => {
                 const element = document.getElementById(id);
-                element.addEventListener('input', publishData);
-                element.addEventListener('change', publishData);
+                element.addEventListener('input', () => { updateDOM(gatherData()); publishData(); });
+                element.addEventListener('change', () => { updateDOM(gatherData()); publishData(); });
             });
         }
 
@@ -312,32 +411,169 @@
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    if(data.infoTitle !== undefined) document.getElementById('input-title').value = data.infoTitle;
-                    if(data.infoContent !== undefined) document.getElementById('input-content').value = data.infoContent;
-                    if(data.tickerText !== undefined) document.getElementById('input-ticker').value = data.tickerText;
+                    ['infoTitle','infoContent','tickerText'].forEach(k => {
+                        if(data[k] !== undefined) document.getElementById('input-' + k.replace('info','').toLowerCase()).value = data[k];
+                    });
+                    ['liveBadge','clock','date','topRight','ticker'].forEach(k => {
+                        const id = 'input-' + k.replace(/([A-Z])/g, '-$1').toLowerCase() + '-visible';
+                        if(data[k+'Visible'] !== undefined && document.getElementById(id)) {
+                            document.getElementById(id).checked = data[k+'Visible'];
+                        }
+                    });
+                    ['textAlign','titleSize','contentSize','clockSize','dateSize','tickerSize'].forEach(k => {
+                        const id = 'input-' + k.replace(/([A-Z])/g, '-$1').toLowerCase();
+                        if(data[k] !== undefined && document.getElementById(id)) document.getElementById(id).value = data[k];
+                    });
+                    if(data.positions) positions = data.positions;
                     
-                    if(data.liveBadgeVisible !== undefined) document.getElementById('input-live-badge-visible').checked = data.liveBadgeVisible;
-                    if(data.clockVisible !== undefined) document.getElementById('input-clock-visible').checked = data.clockVisible;
-                    if(data.dateVisible !== undefined) document.getElementById('input-date-visible').checked = data.dateVisible;
-                    if(data.topRightVisible !== undefined) document.getElementById('input-top-right-visible').checked = data.topRightVisible;
-                    if(data.tickerVisible !== undefined) document.getElementById('input-ticker-visible').checked = data.tickerVisible;
-
-                    if(data.textAlign !== undefined) document.getElementById('input-align').value = data.textAlign;
-                    if(data.titleSize !== undefined) document.getElementById('input-title-size').value = data.titleSize;
-                    if(data.contentSize !== undefined) document.getElementById('input-content-size').value = data.contentSize;
-                    if(data.clockSize !== undefined) document.getElementById('input-clock-size').value = data.clockSize;
-                    if(data.dateSize !== undefined) document.getElementById('input-date-size').value = data.dateSize;
-                    if(data.tickerSize !== undefined) document.getElementById('input-ticker-size').value = data.tickerSize;
+                    updateDOM(data);
+                    publishData();
                 } catch(e) {}
+            } else {
+                updateDOM(gatherData());
+                publishData();
             }
+        }
+
+        // --- 1. 位置リセット機能 ---
+        function resetPos(key, elId) {
+            if (DEFAULT_POSITIONS[key]) {
+                positions[key] = { ...DEFAULT_POSITIONS[key] };
+                const el = document.getElementById(elId);
+                if (el) {
+                    el.style.left = positions[key].x + 'px';
+                    el.style.top = positions[key].y + 'px';
+                }
+                publishData();
+            }
+        }
+
+        // --- 2. ドラッグ＆スナップ（補助）機能 ---
+        let isDragging = false;
+        let dragTarget = null;
+        let offsetX = 0; let offsetY = 0;
+        const SNAP_MARGIN = 20; // ピタッと吸い付く距離(px)
+        const guideV = document.getElementById('guide-v');
+        const guideH = document.getElementById('guide-h');
+
+        function getScale() { return document.getElementById('preview-wrapper').clientWidth / 1920; }
+
+        function getOtherRects(excludeId) {
+            const rects = [];
+            // 画面端もスナップ対象に
+            rects.push({ isScreen: true, left: 0, right: 1920, cx: 960, top: 0, bottom: 1080, cy: 540 });
+            
+            const els = ['live-badge-box', 'clock', 'date', 'top-right-container', 'bottom-ticker'];
+            els.forEach(id => {
+                if (id === excludeId) return;
+                const el = document.getElementById(id);
+                if (el.style.display === 'none') return;
+                const left = parseFloat(el.style.left) || 0;
+                const top = parseFloat(el.style.top) || 0;
+                const w = el.offsetWidth; const h = el.offsetHeight;
+                rects.push({ left, right: left+w, cx: left+w/2, top, bottom: top+h, cy: top+h/2 });
+            });
+            return rects;
+        }
+
+        function onPointerDown(e) {
+            if (isObs) return;
+            const target = e.target.closest('.draggable');
+            if (!target) return;
+            isDragging = true;
+            dragTarget = target;
+            const scale = getScale();
+            const rect = dragTarget.getBoundingClientRect();
+            offsetX = (e.clientX - rect.left) / scale;
+            offsetY = (e.clientY - rect.top) / scale;
+            dragTarget.style.outline = '3px dashed #ff0044';
+            e.preventDefault();
+        }
+
+        function onPointerMove(e) {
+            if (!isDragging || !dragTarget) return;
+            const scale = getScale();
+            const obsRect = obsView.getBoundingClientRect();
+            
+            let x = (e.clientX - obsRect.left) / scale - offsetX;
+            let y = (e.clientY - obsRect.top) / scale - offsetY;
+            const w = dragTarget.offsetWidth;
+            const h = dragTarget.offsetHeight;
+            
+            // スナップ処理
+            let minDiffX = Infinity, minDiffY = Infinity;
+            let snapLineX = null, snapLineY = null;
+            
+            const dragXPoints = { left: x, right: x+w, cx: x+w/2 };
+            const dragYPoints = { top: y, bottom: y+h, cy: y+h/2 };
+            
+            getOtherRects(dragTarget.id).forEach(r => {
+                // X軸比較
+                ['left','right','cx'].forEach(dk => {
+                    ['left','right','cx'].forEach(rk => {
+                        const diff = r[rk] - dragXPoints[dk];
+                        if (Math.abs(diff) < SNAP_MARGIN && Math.abs(diff) < Math.abs(minDiffX)) {
+                            minDiffX = diff; snapLineX = r[rk];
+                        }
+                    });
+                });
+                // Y軸比較
+                ['top','bottom','cy'].forEach(dk => {
+                    ['top','bottom','cy'].forEach(rk => {
+                        const diff = r[rk] - dragYPoints[dk];
+                        if (Math.abs(diff) < SNAP_MARGIN && Math.abs(diff) < Math.abs(minDiffY)) {
+                            minDiffY = diff; snapLineY = r[rk];
+                        }
+                    });
+                });
+            });
+
+            // 吸着の適用とガイドライン表示
+            if (Math.abs(minDiffX) < SNAP_MARGIN) {
+                x += minDiffX;
+                guideV.style.display = 'block'; guideV.style.left = snapLineX + 'px';
+            } else { guideV.style.display = 'none'; }
+
+            if (Math.abs(minDiffY) < SNAP_MARGIN) {
+                y += minDiffY;
+                guideH.style.display = 'block'; guideH.style.top = snapLineY + 'px';
+            } else { guideH.style.display = 'none'; }
+
+            dragTarget.style.left = `${x}px`;
+            dragTarget.style.top = `${y}px`;
+        }
+
+        function onPointerUp(e) {
+            if (!isDragging || !dragTarget) return;
+            isDragging = false;
+            dragTarget.style.outline = 'none';
+            guideV.style.display = 'none';
+            guideH.style.display = 'none';
+            
+            const els = {
+                liveBadgeBox: document.getElementById('live-badge-box'),
+                clockBox: document.getElementById('clock'),
+                dateBox: document.getElementById('date'),
+                topRightContainer: document.getElementById('top-right-container'),
+                bottomTicker: document.getElementById('bottom-ticker')
+            };
+            for (const [key, el] of Object.entries(els)) {
+                positions[key] = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0 };
+            }
+            publishData();
+            dragTarget = null;
+        }
+
+        if (!isObs) {
+            window.addEventListener('pointerdown', onPointerDown);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
         }
 
         function copyUrl() {
             const urlInput = document.getElementById('obs-url-display');
             urlInput.select();
-            navigator.clipboard.writeText(urlInput.value).then(() => {
-                alert('URLをコピーしました！');
-            });
+            navigator.clipboard.writeText(urlInput.value).then(() => alert('URLをコピーしました！'));
         }
 
         function startClock() {
@@ -350,10 +586,9 @@
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 const day = String(now.getDate()).padStart(2, '0');
                 const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                const weekDay = weekDays[now.getDay()];
-
+                
                 document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
-                document.getElementById('date').textContent = `${year}/${month}/${day} (${weekDay})`;
+                document.getElementById('date').textContent = `${year}/${month}/${day} (${weekDays[now.getDay()]})`;
             }
             setInterval(updateClock, 1000);
             updateClock();
