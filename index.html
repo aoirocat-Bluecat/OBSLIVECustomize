@@ -294,7 +294,51 @@
             setTimeout(resizePreview, 100);
         }
 
+        // ====== 外部サーバー時刻同期機能 ======
+        let timeOffset = 0; // PCとサーバーの時刻差(ミリ秒)
+
+        async function syncServerTime() {
+            try {
+                // World Time APIから正確な日本標準時(JST)を取得
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Asia/Tokyo');
+                const data = await response.json();
+                
+                // サーバーの時刻と、通信完了時のPCの時刻の差分を計算
+                const serverTime = new Date(data.datetime).getTime();
+                const localTime = Date.now();
+                timeOffset = serverTime - localTime;
+                
+                console.log('🌐 外部サーバーと時刻同期完了。PCとのズレ: ' + timeOffset + 'ms');
+            } catch (error) {
+                console.warn('⚠️ サーバー時刻の取得に失敗しました。一時的にPCの時刻を使用します。', error);
+                timeOffset = 0; // エラー時はPCの時刻を使うようにフォールバック
+            }
+        }
+
+        function startClock() {
+            syncServerTime(); // 初回同期を実行
+            setInterval(syncServerTime, 60 * 60 * 1000); // 1時間ごとに再同期してズレを防止
+
+            function updateClock() {
+                // 取得したズレ(timeOffset)を加味して正確な時刻を計算
+                const now = new Date(Date.now() + timeOffset);
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+                
+                document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+                document.getElementById('date').textContent = `${year}/${month}/${day} (${weekDays[now.getDay()]})`;
+            }
+            setInterval(updateClock, 1000);
+            updateClock(); // 初回即時実行
+        }
+
         startClock();
+        // ===================================
 
         function resizePreview() {
             if (isObs) return;
@@ -435,7 +479,7 @@
             }
         }
 
-        // --- 1. 位置リセット機能 ---
+        // --- 位置リセット機能 ---
         function resetPos(key, elId) {
             if (DEFAULT_POSITIONS[key]) {
                 positions[key] = { ...DEFAULT_POSITIONS[key] };
@@ -448,7 +492,7 @@
             }
         }
 
-        // --- 2. ドラッグ＆スナップ（補助）機能 ---
+        // --- ドラッグ＆スナップ（補助）機能 ---
         let isDragging = false;
         let dragTarget = null;
         let offsetX = 0; let offsetY = 0;
@@ -460,7 +504,6 @@
 
         function getOtherRects(excludeId) {
             const rects = [];
-            // 画面端もスナップ対象に
             rects.push({ isScreen: true, left: 0, right: 1920, cx: 960, top: 0, bottom: 1080, cy: 540 });
             
             const els = ['live-badge-box', 'clock', 'date', 'top-right-container', 'bottom-ticker'];
@@ -500,7 +543,6 @@
             const w = dragTarget.offsetWidth;
             const h = dragTarget.offsetHeight;
             
-            // スナップ処理
             let minDiffX = Infinity, minDiffY = Infinity;
             let snapLineX = null, snapLineY = null;
             
@@ -508,7 +550,6 @@
             const dragYPoints = { top: y, bottom: y+h, cy: y+h/2 };
             
             getOtherRects(dragTarget.id).forEach(r => {
-                // X軸比較
                 ['left','right','cx'].forEach(dk => {
                     ['left','right','cx'].forEach(rk => {
                         const diff = r[rk] - dragXPoints[dk];
@@ -517,7 +558,6 @@
                         }
                     });
                 });
-                // Y軸比較
                 ['top','bottom','cy'].forEach(dk => {
                     ['top','bottom','cy'].forEach(rk => {
                         const diff = r[rk] - dragYPoints[dk];
@@ -528,7 +568,6 @@
                 });
             });
 
-            // 吸着の適用とガイドライン表示
             if (Math.abs(minDiffX) < SNAP_MARGIN) {
                 x += minDiffX;
                 guideV.style.display = 'block'; guideV.style.left = snapLineX + 'px';
@@ -574,24 +613,6 @@
             const urlInput = document.getElementById('obs-url-display');
             urlInput.select();
             navigator.clipboard.writeText(urlInput.value).then(() => alert('URLをコピーしました！'));
-        }
-
-        function startClock() {
-            function updateClock() {
-                const now = new Date();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
-                
-                document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
-                document.getElementById('date').textContent = `${year}/${month}/${day} (${weekDays[now.getDay()]})`;
-            }
-            setInterval(updateClock, 1000);
-            updateClock();
         }
     </script>
 </body>
